@@ -7,17 +7,26 @@ def f(i, n):
     else:
         return i//2
 
+def print_cycles(cycles):
+    print("(" + ")*(".join([",".join([str(x) for x in c]) for c in cycles]) +")")
+
+def print_bin_cycles(cycles):
+    print("(" + ")*(".join([",".join(["{0:05b}".format(x) for x in c]) for c in cycles]) +")")
+
 if __name__ == "__main__":
     n = int(sys.argv[1])
     marked = set()
+    cycles = []
     for i in range(n):
         if i not in marked:
           marked.add(i)
-          print("({}".format(i), end="")
+          c = [i]
           j = f(i, n)
           while j != i:
-              print(",{}".format(j), end="")
+              c.append(j)
               marked.add(j)
               j = f(j, n)
-          print(")", end="")
-    print()
+          cycles.append(c)
+
+    print_cycles(cycles)
+    print_bin_cycles(cycles)
