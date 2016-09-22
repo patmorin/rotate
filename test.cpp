@@ -84,6 +84,13 @@ void speed_test(T *a, I n, I r, void(*rot)(T*,I,I)) {
     std::cout << elapsed.count() << std::endl;
 }
 
+template<typename T, typename I>
+void outshuffle(T *a, I n) {
+
+}
+
+
+
 typedef std::uint64_t Index;
 typedef std::uint32_t Data;
 

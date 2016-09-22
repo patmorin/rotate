@@ -9,7 +9,7 @@ def my_outshuffle(i, n):
         return i//2
 
 def std_inshuffle(i, n):
-    return (2*(i+1) % (n+1))-1
+    return (2*(i+1) % (n+1))-1;
 
 def print_cycles(cycles):
     print("(" + ")*(".join([",".join([str(x) for x in c])
@@ -34,7 +34,6 @@ def get_cycles(f, n):
                 j = f(j, n)
             cycles.append(c)
     return cycles
-
 
 def read_cmd_line():
     n = -1
