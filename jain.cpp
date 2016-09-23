@@ -13,58 +13,6 @@ void usage(char *progname) {
 }
 
 template<typename T, typename I>
-void reverse(T *a, I n) {
-	for (I i = 0; i < n/2; i++) {
-		std::swap(a[i], a[n-i-1]);
-	}
-}
-
-template<typename T, typename I>
-void rotate_std(T *a, I n, I r) {
-    std::rotate(a, a+n-r, a+n);
-}
-
-template<typename T, typename I>
-void rotate_stdrev(T *a, I n, I r) {
-	std::reverse(a, a+n);
-    std::reverse(a, a+r);
-	std::reverse(a+r, a+n-r);
-}
-
-template<typename T, typename I>
-void rotate_rev(T *a, I n, I r) {
-	reverse(a, n);
-    reverse(a, r);
-	reverse(a+r, n-r);
-}
-
-// Compute the gcd of a and b, requires a >= b
-template<typename I>
-I gcd(I a, I b) {
-    I r = a % b;
-    if (r == 0) return b;
-    return gcd(b, r);
-}
-
-template<typename T, typename I>
-void rotate_gcd(T *a, I n, I r) {
-    I g = gcd(n, r);
-    I m = n / g;
-    for (I k = 0; k < g; k++) {
-        I i = k;
-        T t = a[i];
-        for (I j = 0; j < m; j++) {
-            I inxt = (i+r);
-						inxt = inxt >= n ? inxt-n : inxt; // avoid mod in favour of cmov
-            T t2 = a[inxt];
-            a[inxt] = t;
-            t = t2;
-            i = inxt;
-        }
-    }
-}
-
-template<typename T, typename I>
 void print_array(T *a, I n) {
     if (n < 50) {
         for (I i = 0; i < n-1; i++) {
@@ -129,101 +77,64 @@ inline I outshuffle_perm3(I i, I n) {
 	return out+fix;
 }
 
+template<typename Data, typename Index>
+void check_inshuffle_output(Data *a, Index n) {
+	for (Index i = 0; i < n; i++) {
+		if (a[i] != outshuffle_perm3(i, n)) {
+			std::cerr << "Mistake in output!!!" << std::endl;
+			exit(-1);
+		}
+	}
+}
 
-typedef std::uint64_t Index;
-typedef std::uint32_t Data;
+template<typename Data, typename Index>
+void jain_inshuffle(Data *a, Index n) {
+	while (n > 1) {
+		// Compute appropriate value of m
+		Index m = 1;
+		while (3*m-1 <= n) m *= 3;
+		m -= 1;
 
-typedef void(*Rotater)(Data*,Index,Index);
+		// Move correct m elements to front of the array
+		std::reverse(a+m/2, a+n/2+m/2);
+		std::reverse(a+m/2, a+m);
+		std::reverse(a+m, a+n/2+m/2);
+
+		// Now use Jain's algorithm on a[0,...,m-1];
+		for (Index g = 1; g < m; g *= 3) {
+			Index cur = g-1;
+			Data t = a[cur];
+			do {
+				Index nxt = inshuffle_perm3(cur, m);
+				Data t2 = a[nxt];
+				a[nxt] = t;
+				t = t2;
+				cur = nxt;
+			} while (cur != g-1);
+		}
+
+		// Recurse on a[m,...n-1]
+		a += m;
+		n -= m;
+	}
+}
 
 int main(int argc, char *argv[]) {
-	Index n;
+	std::uint64_t n;
     if (argc != 2) usage(argv[0]);
-    std::istringstream is_n(argv[1]);
-    is_n >> n;
-
-	while (n > 0) {
-		Index k = 0, cum = 1;
-		while (3*cum-1 <= n) {
-			k++;
-			cum *= 3;
-		}
-		Index m = cum-1;
-		std::cout << "n = " << n << ", k = " << k << ", cum = " << cum
-			<< ", m = " << m << std::endl;
-
-		n -= m;
-
-#ifdef XXXX
-		Index sum = 0;
-		auto start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += outshuffle_perm1(i, m);
-		}
-		auto stop =  std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = stop - start;
-		std::cout << "outshuffle1: " << elapsed.count() << " " << sum << std::endl;
-
-		sum = 0;
-		start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += outshuffle_perm2(i, m);
-		}
-		stop =  std::chrono::high_resolution_clock::now();
-		elapsed = stop - start;
-		std::cout << "outshuffle2: " << elapsed.count() << " " << sum << std::endl;
-
-		sum = 0;
-		start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += outshuffle_perm3(i, m);
-		}
-		stop =  std::chrono::high_resolution_clock::now();
-		elapsed = stop - start;
-		std::cout << "outshuffle3: " << elapsed.count() << " " << sum << std::endl;
-
-		sum = 0;
-		start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += inshuffle_perm1(i, m);
-		}
-		stop =  std::chrono::high_resolution_clock::now();
-		elapsed = stop - start;
-		std::cout << "inshuffle1: " << elapsed.count() << " " << sum << std::endl;
-
-		sum = 0;
-		start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += inshuffle_perm2(i, m);
-		}
-		stop =  std::chrono::high_resolution_clock::now();
-		elapsed = stop - start;
-		std::cout << "inshuffle2: " << elapsed.count() << " " << sum << std::endl;
-
-		sum = 0;
-		start = std::chrono::high_resolution_clock::now();
-		for (Index i = 0; i < m; i++) {
-			sum += inshuffle_perm3(i, m);
-		}
-		stop =  std::chrono::high_resolution_clock::now();
-		elapsed = stop - start;
-		std::cout << "inshuffle3: " << elapsed.count() << " " << sum << std::endl;
-
-		if (m < 50) {
-			for (Index i = 0; i < m-1; i++) {
-				std::cout << inshuffle_perm1(i, m) << ",";
-			}
-			std::cout << inshuffle_perm1(m-1, m) << std::endl;
-
-			for (Index i = 0; i < m-1; i++) {
-				std::cout << inshuffle_perm2(i, m) << ",";
-			}
-			std::cout << inshuffle_perm2(m-1, m) << std::endl;
-
-			for (Index i = 0; i < m-1; i++) {
-				std::cout << inshuffle_perm3(i, m) << ",";
-			}
-			std::cout << inshuffle_perm3(m-1, m) << std::endl;
-		}
-#endif //XXXXX
+	{
+	    std::istringstream is_n(argv[1]);
+	    is_n >> n;
 	}
+	auto *a = new std::uint32_t[n];
+	std::iota(a, a+n, 0);
+
+	print_array(a, n);
+	auto start = std::chrono::high_resolution_clock::now();
+	jain_inshuffle(a, n);
+	auto stop =  std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> elapsed = stop - start;
+	std::cout << elapsed.count() << std::endl;
+	print_array(a, n);
+	check_inshuffle_output(a, n);
 }
