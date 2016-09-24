@@ -87,6 +87,16 @@ void check_inshuffle_output(Data *a, Index n) {
 	}
 }
 
+template<typename Data, typename Index>
+void check_outshuffle_output(Data *a, Index n) {
+	for (Index i = 0; i < n; i++) {
+		if (a[i] != inshuffle_perm3(i, n)) {
+			std::cerr << "Mistake in output!!!" << std::endl;
+			exit(-1);
+		}
+	}
+}
+
 /*
  * This kind of implementation is probably needed for larger data types
 template<typename Data, typename Index>
@@ -152,6 +162,36 @@ void jain_inshuffle(Data *a, Index n) {
 		n -= m;
 	}
 }
+
+template<typename Data, typename Index>
+void jain_outshuffle(Data *a, Index n) {
+	if (n <= 1) return;
+
+	// Compute appropriate value of m
+	Index m = 1;
+	while (3*m-1 <= n) m *= 3;
+	m -= 1;
+
+	// Use Jain's trick to shuffle a[0,...,m-1];
+	for (Index g = 1; g < m; g *= 3) {
+		Index cur = g-1;
+		Data t = a[cur];
+		do {
+			Index nxt = outshuffle_perm3(cur, m);
+			Data t2 = a[nxt];
+			a[nxt] = t;
+			t = t2;
+			cur = nxt;
+		} while (cur != g-1);
+	}
+
+	// Recurse on a[m,...n-1]
+	jain_outshuffle(a+m, n-m);
+
+	// Regroup odds and evens
+	std::rotate(a+m/2, a+m, a+m+(n-m)/2);
+}
+
 
 // This version tries to use prefetching, but it doesn't help much. Memory
 // bandwidth is the bottleneck.
@@ -241,5 +281,21 @@ int main(int argc, char *argv[]) {
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
 	print_array(a, n);
 	check_inshuffle_output(a, n);
+
+	std::cout << "Refilling...";
+	std::cout.flush();
+	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
+
+	std::cout << "Permuting using jain_outshuffle()...";
+	std::cout.flush();
+	print_array(a, n);
+	start = std::chrono::high_resolution_clock::now();
+	jain_outshuffle(a, n);
+	stop =  std::chrono::high_resolution_clock::now();
+	elapsed = stop - start;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
+	print_array(a, n);
+	check_outshuffle_output(a, n);
 
 }
