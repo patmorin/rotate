@@ -123,6 +123,7 @@ void jain_inshuffle(Data *a, Index n) {
 }
  */
 
+static std::uint64_t g_sum = 0;
 
 template<typename Data, typename Index>
 void jain_inshuffle(Data *a, Index n) {
@@ -133,16 +134,30 @@ void jain_inshuffle(Data *a, Index n) {
 		m -= 1;
 
 		// Move correct m elements to front of the array
-		std::reverse(a+m/2, a+n/2+m/2);
-		std::reverse(a+m/2, a+m);
-		std::reverse(a+m, a+n/2+m/2);
+		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
 
 		// Now use Jain's trick to shuffle a[0,...,m-1];
 		for (Index g = 1; g < m; g *= 3) {
 			Index cur = g-1;
 			Data t = a[cur];
+
+			const Index readahead = 4;
+			Index buf[readahead];
+			buf[0] = cur;
+			for (Index i = 1; i < readahead; i++) {
+				buf[i] = inshuffle_perm3(buf[i-1], m);
+				__builtin_prefetch(a+buf[i]);
+			}
+
+			Index bi = 0;
 			do {
-				Index nxt = inshuffle_perm3(cur, m);
+				Index biprv = bi == 0 ? readahead-1 : bi-1;
+				Index binxt = bi+1 == readahead ? 0 : bi+1; // (bi+1)%readahead
+				Index nxt = buf[binxt];
+
+				buf[bi] = inshuffle_perm3(buf[bi], m);
+				__builtin_prefetch(a+buf[binxt], 1);
+
 				Data t2 = a[nxt];
 				a[nxt] = t;
 				t = t2;
@@ -163,15 +178,22 @@ int main(int argc, char *argv[]) {
 	    std::istringstream is_n(argv[1]);
 	    is_n >> n;
 	}
+
+	std::cout << "Building and filling...";
+	std::cout.flush();
 	auto *a = new std::uint32_t[n];
 	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
 
+	std::cout << "Permuting...";
+	std::cout.flush();
 	print_array(a, n);
 	auto start = std::chrono::high_resolution_clock::now();
 	jain_inshuffle(a, n);
 	auto stop =  std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = stop - start;
 	std::cout << elapsed.count() << std::endl;
+	std::cout << g_sum << std::endl;
 	print_array(a, n);
 	check_inshuffle_output(a, n);
 }
