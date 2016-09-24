@@ -123,8 +123,6 @@ void jain_inshuffle(Data *a, Index n) {
 }
  */
 
-static std::uint64_t g_sum = 0;
-
 template<typename Data, typename Index>
 void jain_inshuffle(Data *a, Index n) {
 	while (n > 1) {
@@ -140,8 +138,40 @@ void jain_inshuffle(Data *a, Index n) {
 		for (Index g = 1; g < m; g *= 3) {
 			Index cur = g-1;
 			Data t = a[cur];
+			do {
+				Index nxt = inshuffle_perm3(cur, m);
+				Data t2 = a[nxt];
+				a[nxt] = t;
+				t = t2;
+				cur = nxt;
+			} while (cur != g-1);
+		}
 
-			const Index readahead = 4;
+		// Recurse on a[m,...n-1]
+		a += m;
+		n -= m;
+	}
+}
+
+// This version tries to use prefetching, but it doesn't help much. Memory
+// bandwidth is the bottleneck.
+template<typename Data, typename Index>
+void jain_inshuffle_pf(Data *a, Index n) {
+	while (n > 1) {
+		// Compute appropriate value of m
+		Index m = 1;
+		while (3*m-1 <= n) m *= 3;
+		m -= 1;
+
+		// Move correct m elements to front of the array
+		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
+
+		// Now use Jain's trick to shuffle a[0,...,m-1];
+		for (Index g = 1; g < m; g *= 3) {
+			Index cur = g-1;
+			Data t = a[cur];
+
+			const Index readahead = 35;
 			Index buf[readahead];
 			buf[0] = cur;
 			for (Index i = 1; i < readahead; i++) {
@@ -149,20 +179,19 @@ void jain_inshuffle(Data *a, Index n) {
 				__builtin_prefetch(a+buf[i]);
 			}
 
-			Index bi = 0;
+			Index bicur = 0;
 			do {
-				Index biprv = bi == 0 ? readahead-1 : bi-1;
-				Index binxt = bi+1 == readahead ? 0 : bi+1; // (bi+1)%readahead
-				Index nxt = buf[binxt];
+				Index biprv = bicur == 0 ? readahead-1 : bicur-1;
+				Index binxt = bicur+1 == readahead ? 0 : bicur+1;
 
-				buf[bi] = inshuffle_perm3(buf[bi], m);
-				__builtin_prefetch(a+buf[binxt], 1);
+				buf[bicur] = inshuffle_perm3(buf[biprv], m);
+				__builtin_prefetch(a+buf[bicur], 1);
 
-				Data t2 = a[nxt];
-				a[nxt] = t;
+				Data t2 = a[buf[binxt]];
+				a[buf[binxt]] = t;
 				t = t2;
-				cur = nxt;
-			} while (cur != g-1);
+				bicur = binxt;
+			} while (buf[bicur] != g-1);
 		}
 
 		// Recurse on a[m,...n-1]
@@ -182,18 +211,35 @@ int main(int argc, char *argv[]) {
 	std::cout << "Building and filling...";
 	std::cout.flush();
 	auto *a = new std::uint32_t[n];
+
 	std::iota(a, a+n, 0);
 	std::cout << "done" << std::endl;
 
-	std::cout << "Permuting...";
+	std::cout << "Permuting using jain_inshuffle()...";
 	std::cout.flush();
 	print_array(a, n);
 	auto start = std::chrono::high_resolution_clock::now();
 	jain_inshuffle(a, n);
 	auto stop =  std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = stop - start;
-	std::cout << elapsed.count() << std::endl;
-	std::cout << g_sum << std::endl;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
 	print_array(a, n);
 	check_inshuffle_output(a, n);
+
+	std::cout << "Refilling...";
+	std::cout.flush();
+	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
+
+	std::cout << "Permuting using jain_inshuffle_pf()...";
+	std::cout.flush();
+	print_array(a, n);
+	start = std::chrono::high_resolution_clock::now();
+	jain_inshuffle_pf(a, n);
+	stop =  std::chrono::high_resolution_clock::now();
+	elapsed = stop - start;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
+	print_array(a, n);
+	check_inshuffle_output(a, n);
+
 }
