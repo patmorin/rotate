@@ -87,6 +87,8 @@ void check_inshuffle_output(Data *a, Index n) {
 	}
 }
 
+/*
+ * This kind of implementation is probably needed for larger data types
 template<typename Data, typename Index>
 void jain_inshuffle(Data *a, Index n) {
 	while (n > 1) {
@@ -100,7 +102,42 @@ void jain_inshuffle(Data *a, Index n) {
 		std::reverse(a+m/2, a+m);
 		std::reverse(a+m, a+n/2+m/2);
 
-		// Now use Jain's algorithm on a[0,...,m-1];
+		// Now use Jain's trick to shuffle a[0,...,m-1];
+		for (Index g = 1; g < m; g *= 3) {
+			Index cur = g-1;
+			Data t[2] = { a[cur], 0 };
+			int flg = 0;
+			do {
+				Index nxt = inshuffle_perm3(cur, m);
+				t[!flg] = a[nxt];
+				a[nxt] = t[flg];
+				flg = !flg;
+				cur = nxt;
+			} while (cur != g-1);
+		}
+
+		// Recurse on a[m,...n-1]
+		a += m;
+		n -= m;
+	}
+}
+ */
+
+
+template<typename Data, typename Index>
+void jain_inshuffle(Data *a, Index n) {
+	while (n > 1) {
+		// Compute appropriate value of m
+		Index m = 1;
+		while (3*m-1 <= n) m *= 3;
+		m -= 1;
+
+		// Move correct m elements to front of the array
+		std::reverse(a+m/2, a+n/2+m/2);
+		std::reverse(a+m/2, a+m);
+		std::reverse(a+m, a+n/2+m/2);
+
+		// Now use Jain's trick to shuffle a[0,...,m-1];
 		for (Index g = 1; g < m; g *= 3) {
 			Index cur = g-1;
 			Data t = a[cur];
