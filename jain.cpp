@@ -153,12 +153,12 @@ void jain_inshuffle(Data *a, Index n) {
  		int i = 0;
  		while (sprimes[i+1] <= n) i++;
  		Index m = sprimes[i];
-
+		std::cout << std::endl << "m = " << m << std::endl;
  		// Move correct m elements to front of the array
  		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
 
  		// Now use Jain's trick to shuffle a[0,...,m-1];
- 		Index cur = 2;
+ 		Index cur = 1;
  		Data t = a[cur];
  		do {
  			Index nxt = inshuffle_perm3(cur, m);
@@ -166,7 +166,7 @@ void jain_inshuffle(Data *a, Index n) {
  			a[nxt] = t;
  			t = t2;
  			cur = nxt;
- 		} while (cur != 2);
+ 		} while (cur != 1);
 
  		// Recurse on a[m,...n-1]
  		a += m;
@@ -328,7 +328,7 @@ void prime_inshuffle_pf(Data *a, Index n) {
 		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
 
 		// Now use Jain's trick to shuffle a[0,...,m-1];
-		Index cur = 2;
+		Index cur = 1;
 		Data t = a[cur];
 
 		const Index readahead = 35;
@@ -351,7 +351,7 @@ void prime_inshuffle_pf(Data *a, Index n) {
 			a[buf[binxt]] = t;
 			t = t2;
 			bicur = binxt;
-		} while (buf[bicur] != 2);
+		} while (buf[bicur] != 1);
 
 		// Recurse on a[m,...n-1]
 		a += m;
