@@ -47,7 +47,15 @@ def read_cmd_line():
         sys.exit(-1)
     return n
 
+def stats():
+    for n in range(2, 1000):
+        cycles = get_cycles(my_outshuffle, n);
+        if len(cycles) == 1:
+            print("n={} C={}".format(n, len(get_cycles(my_outshuffle, n))))
+
 if __name__ == "__main__":
+    stats()
+    exit(0)
     n = read_cmd_line()
     marked = set()
     cycles = get_cycles(std_inshuffle, n)

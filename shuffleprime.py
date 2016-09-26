@@ -1,11 +1,14 @@
 """Code to find a sequence of shuffle primes that form (roughly) a doubling
- sequence"""
+   sequence. This uses the fact that an even integer n is a shuffle-prime
+   if and only if n+1 is prime and 2 is a primitive root of n+1.
+"""
 from __future__ import print_function
 from __future__ import division
 import sys
 import subprocess
 
 def mod_power(b, x, n):
+    """Return b^x mod n"""
     if x == 0: return 1
     if x == 1: return b
     halfx = x//2
@@ -15,12 +18,15 @@ def mod_power(b, x, n):
         t = t*b % n
     return t
 
-def is_prime(n):
+def prime(n):
+    """Test if n is prime"""
     out = subprocess.check_output(['factor', str(n)])
     return len(out.split()) == 2
 
+
 def shuffle_prime(n):
-    if not is_prime(n+1):
+    """Test if n is a shuffle-prime, i.e., if 2 is a primitive root of n+1"""
+    if not prime(n+1):
         return False
     out = subprocess.check_output(['factor', str(n)])
     factors = [int(x) for x in out.split()[1:]]
@@ -31,6 +37,7 @@ def shuffle_prime(n):
     return True
 
 if __name__ == "__main__":
+    """List some shuffle-primes that form (roughly) a geometric progression."""
     ub = 10
     print ("std::uint64_t sprimes[] = {2,4", end="")
     while ub < 2**64:
