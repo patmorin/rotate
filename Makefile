@@ -1,6 +1,11 @@
 
-test: test.cpp
-	g++ -O4 -std=c++1y -Wall test.cpp -o test
+ALL=rotatetest permtest jain
+
+all: $(ALL)
+
+
+%: %.cpp
+	g++ -O4 -march=native -std=c++1y -Wall $< -o $*
 
 clean:
-	rm -f test
+	rm -f $(ALL)
