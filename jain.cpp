@@ -153,7 +153,7 @@ void jain_inshuffle(Data *a, Index n) {
  		int i = 0;
  		while (sprimes[i+1] <= n) i++;
  		Index m = sprimes[i];
-		std::cout << std::endl << "m = " << m << std::endl;
+
  		// Move correct m elements to front of the array
  		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
 
