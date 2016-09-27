@@ -77,6 +77,7 @@ inline I outshuffle_perm3(I i, I n) {
 	return out+fix;
 }
 
+
 template<typename Data, typename Index>
 void check_inshuffle_output(Data *a, Index n) {
 	for (Index i = 0; i < n; i++) {
@@ -396,7 +397,7 @@ void prime_inshuffle_pf(Data *a, Index n) {
 // Implements a reversed outshuffle on 32 values
 template<typename Data>
 void rev_outshuffle32(Data *a) {
-	const int cycles[6][5] = {
+	static const int cycles[6][5] = {
 		{1,16,8,4,2},
 		{3,17,24,12,6},
 		{5,18,9,20,10},
@@ -414,28 +415,126 @@ void rev_outshuffle32(Data *a) {
 	}
 }
 
+
+
+// Implements a reversed outshuffle on 128 values
+template<typename Data>
+void rev_outshuffle128(Data *a) {
+	const static int A = 18, B = 7;
+	const static int cycles[A][B] = {
+		{1, 64, 32, 16, 8, 4, 2},
+		{3, 65, 96, 48, 24, 12, 6},
+		{5, 66, 33, 80, 40, 20, 10},
+		{7, 67, 97, 112, 56, 28, 14},
+		{9, 68, 34, 17, 72, 36, 18},
+		{11, 69, 98, 49, 88, 44, 22},
+		{13, 70, 35, 81, 104, 52, 26},
+		{15, 71, 99, 113, 120, 60, 30},
+		{19, 73, 100, 50, 25, 76, 38},
+		{21, 74, 37, 82, 41, 84, 42},
+		{23, 75, 101, 114, 57, 92, 46},
+		{27, 77, 102, 51, 89, 108, 54},
+		{29, 78, 39, 83, 105, 116, 58},
+		{31, 79, 103, 115, 121, 124, 62},
+		{43, 85, 106, 53, 90, 45, 86},
+		{47, 87, 107, 117, 122, 61, 94},
+		{55, 91, 109, 118, 59, 93, 110},
+		{63, 95, 111, 119, 123, 125, 126},
+	};
+	for (int i = 0; i < A; i++) {
+		Data t1 = a[cycles[i][B-1]];
+		for (int j = 0; j < B; j++) {
+			Data t2 = a[cycles[i][j]];
+			a[cycles[i][j]] = t1;
+			t1 = t2;
+		}
+	}
+}
+
+// Implements a reversed outshuffle on 128 values
+template<typename Data>
+void rev_outshuffle128_2(Data *a) {
+	const static int A = 18, B = 7;
+	const static int generators[A] = {
+		1, 3, 5, 7, 9, 11, 13, 15, 19, 21, 23, 27, 29, 31, 43, 47, 55, 63
+	};
+	for (int i = 0; i < A; i++) {
+		int idx = generators[i];
+		Data t1 = a[idx];
+		for (int j = 0; j < B; j++) {
+			int nextidx = (idx >> 1) | ((idx & 1) << 6);
+			Data t2 = a[nextidx];
+			a[nextidx] = t1;
+			t1 = t2;
+			idx = nextidx;
+		}
+	}
+}
+
+
+// Implements a reversed outshuffle on 192 values
+template<typename Data>
+void rev_outshuffle192(Data *a) {
+	const static int A = 2, B = 95;
+	const static std::uint32_t cycles[A][B] = {
+		{1, 96, 48, 24, 12, 6, 3, 97, 144, 72, 36, 18, 9, 100, 50, 25, 108, 54, 27, 109, 150, 75, 133, 162, 81, 136, 68, 34, 17, 104, 52, 26, 13, 102, 51, 121, 156, 78, 39, 115, 153, 172, 86, 43, 117, 154, 77, 134, 67, 129, 160, 80, 40, 20, 10, 5, 98, 49, 120, 60, 30, 15, 103, 147, 169, 180, 90, 45, 118, 59, 125, 158, 79, 135, 163, 177, 184, 92, 46, 23, 107, 149, 170, 85, 138, 69, 130, 65, 128, 64, 32, 16, 8, 4, 2},
+		{7, 99, 145, 168, 84, 42, 21, 106, 53, 122, 61, 126, 63, 127, 159, 175, 183, 187, 189, 190, 95, 143, 167, 179, 185, 188, 94, 47, 119, 155, 173, 182, 91, 141, 166, 83, 137, 164, 82, 41, 116, 58, 29, 110, 55, 123, 157, 174, 87, 139, 165, 178, 89, 140, 70, 35, 113, 152, 76, 38, 19, 105, 148, 74, 37, 114, 57, 124, 62, 31, 111, 151, 171, 181, 186, 93, 142, 71, 131, 161, 176, 88, 44, 22, 11, 101, 146, 73, 132, 66, 33, 112, 56, 28, 14}
+	};
+	for (int i = 0; i < A; i++) {
+		Data t1 = a[cycles[i][B-1]];
+		for (int j = 0; j < B; j++) {
+			Data t2 = a[cycles[i][j]];
+			a[cycles[i][j]] = t1;
+			t1 = t2;
+		}
+	}
+}
+
+
+
+// Implements a reversed outshuffle on 32 values
+template<unsigned B, typename Data>
+inline void rev_outshuffle(Data *a) {
+	Data buf[B];
+	for (unsigned i = 0; i < B; i +=2) {
+		const unsigned halfi = i/2;
+		buf[halfi] = a[i];
+		buf[B/2+halfi] = a[i+1];
+	}
+	for (unsigned i = 0; i < B; i++) {
+		a[i] = buf[i];
+	}
+	//std::copy_n(buf, B, a);
+}
+
+
+
 // This is the star of the show
-template<bool prefetch=false, typename Data, typename Index>
+template<unsigned B, bool prefetch=false, typename Data, typename Index>
 void blocked_outshuffle(Data *a, Index n) {
-	Index r = n % 32;
+	Index r = n % (2*B);
 	Index m = n - r;
 
 	prime_outshuffle(a+m, r);
 
-	for(Index i = 0; i < m/32; i++) {
-		rev_outshuffle32(a+32*i);
+	for(Index i = 0; i < m/(2*B); i++) {
+		static_assert(B==96, "Assuming B==96");
+		//rev_outshuffle128(a+(2*B)*i);
+		rev_outshuffle192(a+(2*B)*i);
+		//rev_outshuffle<2*B>(a+(2*B)*i);
 	}
-	struct block { Data dummy[16];	};
+	struct block { Data dummy[B];	};
 	if (prefetch) {
-		prime_outshuffle_pf<20>((block*)a, m/16);
+		prime_outshuffle_pf<4>((block*)a, m/B);
 	} else {
-		prime_outshuffle((block*)a, m/16);
+		prime_outshuffle((block*)a, m/B);
 	}
+
 	// Regroup odds and evens
 	std::rotate(a+m/2, a+m, a+m+r/2);
 }
 
-template<bool prefetch=false, typename Data, typename Index>
+template<unsigned B, bool prefetch=false, typename Data, typename Index>
 void blocked_eytzinger(Data *a, Index n) {
 	Index h = 0;
 	Index m = 0;
@@ -444,14 +543,16 @@ void blocked_eytzinger(Data *a, Index n) {
 		h++;
 	}
 	Index r = n - m;
-	blocked_outshuffle<prefetch>(a, 2*r);
+	blocked_outshuffle<B,prefetch>(a, 2*r);
 	std::rotate(a+r, a+2*r, a+n);
 	Index one = 1;
 	while (h > 0) {
-		blocked_outshuffle<prefetch>(a, (one<<h)-1);
+		blocked_outshuffle<B,prefetch>(a, (one<<h)-1);
 		h--;
 	}
 }
+
+
 
 
 int main(int argc, char *argv[]) {
@@ -461,6 +562,8 @@ int main(int argc, char *argv[]) {
 	    std::istringstream is_n(argv[1]);
 	    is_n >> n;
 	}
+
+	const unsigned BLOCK=96;
 
 	std::cout << "Building and filling...";
 	std::cout.flush();
@@ -553,7 +656,7 @@ int main(int argc, char *argv[]) {
 	std::cout.flush();
 	print_array(a, n);
 	start = std::chrono::high_resolution_clock::now();
-	blocked_outshuffle(a, n);
+	blocked_outshuffle<BLOCK>(a, n);
 	stop =  std::chrono::high_resolution_clock::now();
 	elapsed = stop - start;
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
@@ -569,7 +672,7 @@ int main(int argc, char *argv[]) {
 	std::cout.flush();
 	print_array(a, n);
 	start = std::chrono::high_resolution_clock::now();
-	blocked_outshuffle<true>(a, n);
+	blocked_outshuffle<BLOCK,true>(a, n);
 	stop =  std::chrono::high_resolution_clock::now();
 	elapsed = stop - start;
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
@@ -601,7 +704,7 @@ int main(int argc, char *argv[]) {
 	std::cout.flush();
 	print_array(a, n);
 	start = std::chrono::high_resolution_clock::now();
-	blocked_eytzinger(a, n);
+	blocked_eytzinger<BLOCK,true>(a, n);
 	stop =  std::chrono::high_resolution_clock::now();
 	elapsed = stop - start;
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;

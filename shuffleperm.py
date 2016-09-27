@@ -87,6 +87,10 @@ if __name__ == "__main__":
     cycles = get_cycles(my_outshuffle, n)
     print_cycles(cycles)
 
-    cycles = get_cycles(funny_outshuffle, n)
-    print_cycles(cycles)
+    cycles = [c for c in get_cycles(funny_outshuffle, n) if len(c)>1]
+    print("const static int A = {}, B = {};".format(len(cycles), len(cycles[0])))
+    print("const static int cycles[A][B] = {")
+    for c in cycles:
+            print("\t{" + ", ".join([str(x) for x in c]) + "},")
+    print("};")
     # print_bin_cycles(cycles)
