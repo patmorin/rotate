@@ -8,6 +8,9 @@ def my_outshuffle(i, n):
     else:
         return i//2
 
+def funny_outshuffle(i, n):
+    return (my_outshuffle(i, n) + n//2) % n;
+
 def std_inshuffle(i, n):
     return (2*(i+1) % (n+1))-1;
 
@@ -54,13 +57,16 @@ def stats():
             print("n={} C={}".format(n, len(get_cycles(my_outshuffle, n))))
 
 if __name__ == "__main__":
-    stats()
-    exit(0)
+    #stats()
+    #exit(0)
     n = read_cmd_line()
     marked = set()
     cycles = get_cycles(std_inshuffle, n)
     print_cycles(cycles)
     # print_bin_cycles(cycles)
     cycles = get_cycles(my_outshuffle, n)
+    print_cycles(cycles)
+
+    cycles = get_cycles(funny_outshuffle, n)
     print_cycles(cycles)
     # print_bin_cycles(cycles)

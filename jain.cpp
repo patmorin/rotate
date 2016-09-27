@@ -133,46 +133,46 @@ void jain_inshuffle(Data *a, Index n) {
 }
  */
 
- static std::uint64_t sprimes[] =
- 	{1,2,4,10,18,36,66,130,226,442,882,1746,3490,6970,13932,27850,55690,111372,
- 		222706,445362,890716,1781362,3562716,7125412,14250780,28501546,57003082,
- 		114006148,228012258,456024468,912048756,1824097468,3648194922,7296389692,
- 		14592779290,29185558546,58371117036,116742233946,233484467860,466968935700,
- 		933937871298,1867875742516,3735751484938,7471502969652,14943005939298,
- 		29886011878338,59772023756412,119544047512732,239088095025346,
- 		478176190050682,956352380101330,1912704760202572,3825409520405140,
- 		7650819040810018,15301638081619986,30603276163239906,61206552326479756,
- 		122413104652959510,244826209305918996,489652418611837968,979304837223675928,
- 		1958609674447351852,3917219348894703586,7834438697789407128,
- 		15668877395578814236};
+static std::uint64_t sprimes[] =
+	{1,2,4,10,18,36,66,130,226,442,882,1746,3490,6970,13932,27850,55690,111372,
+		222706,445362,890716,1781362,3562716,7125412,14250780,28501546,57003082,
+		114006148,228012258,456024468,912048756,1824097468,3648194922,7296389692,
+		14592779290,29185558546,58371117036,116742233946,233484467860,466968935700,
+		933937871298,1867875742516,3735751484938,7471502969652,14943005939298,
+		29886011878338,59772023756412,119544047512732,239088095025346,
+		478176190050682,956352380101330,1912704760202572,3825409520405140,
+		7650819040810018,15301638081619986,30603276163239906,61206552326479756,
+		122413104652959510,244826209305918996,489652418611837968,979304837223675928,
+		1958609674447351852,3917219348894703586,7834438697789407128,
+		15668877395578814236};
 
- template<typename Data, typename Index>
- void prime_inshuffle(Data *a, Index n) {
- 	while (n > 1) {
- 		// Compute appropriate value of m
- 		int i = 0;
- 		while (sprimes[i+1] <= n) i++;
- 		Index m = sprimes[i];
+template<typename Data, typename Index>
+void prime_inshuffle(Data *a, Index n) {
+	while (n > 1) {
+		// Compute appropriate value of m
+		int i = 0;
+		while (sprimes[i+1] <= n) i++;
+		Index m = sprimes[i];
 
- 		// Move correct m elements to front of the array
- 		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
+		// Move correct m elements to front of the array
+		std::rotate(a+m/2, a+n/2, a+n/2+m/2);
 
- 		// Now use Jain's trick to shuffle a[0,...,m-1];
- 		Index cur = 1;
- 		Data t = a[cur];
- 		do {
- 			Index nxt = inshuffle_perm3(cur, m);
- 			Data t2 = a[nxt];
- 			a[nxt] = t;
- 			t = t2;
- 			cur = nxt;
- 		} while (cur != 1);
+		// Now use Jain's trick to shuffle a[0,...,m-1];
+		Index cur = 0;
+		Data t = a[cur];
+		do {
+			Index nxt = inshuffle_perm3(cur, m);
+			Data t2 = a[nxt];
+			a[nxt] = t;
+			t = t2;
+			cur = nxt;
+		} while (cur != 0);
 
- 		// Recurse on a[m,...n-1]
- 		a += m;
- 		n -= m;
- 	}
- }
+		// Recurse on a[m,...n-1]
+		a += m;
+		n -= m;
+	}
+}
 
 
 template<typename Data, typename Index>
@@ -208,7 +208,6 @@ void jain_inshuffle(Data *a, Index n) {
 template<typename Data, typename Index>
 void jain_outshuffle(Data *a, Index n) {
 	if (n <= 1) return;
-
 	// Compute appropriate value of m
 	Index m = 1;
 	while (3*m-1 <= n) m *= 3;
@@ -217,12 +216,14 @@ void jain_outshuffle(Data *a, Index n) {
 	// Use Jain's trick to shuffle a[0,...,m-1];
 	for (Index g = 1; g < m; g *= 3) {
 		Index cur = g-1;
-		Data t = a[cur];
+		Data t[2];
+		int flipflop = 0;
+		t[flipflop] = a[cur];
 		do {
 			Index nxt = outshuffle_perm3(cur, m);
-			Data t2 = a[nxt];
-			a[nxt] = t;
-			t = t2;
+			t[!flipflop] = a[nxt];
+			a[nxt] = t[flipflop];
+			flipflop = !flipflop;
 			cur = nxt;
 		} while (cur != g-1);
 	}
@@ -243,16 +244,50 @@ void prime_outshuffle(Data *a, Index n) {
 	while (sprimes[i+1] <= n) i++;
 	Index m = sprimes[i];
 
-	// Use Jain's trick to shuffle a[0,...,m-1];
-	Index cur = 1;
-	Data t = a[cur];
+	// Follow the cycle through a[0,...,m-1];
+	Index cur = 0;
+	Data t[2];
+	int flipflop = 0;
+	t[flipflop] = a[cur];
 	do {
 		Index nxt = outshuffle_perm3(cur, m);
-		Data t2 = a[nxt];
-		a[nxt] = t;
-		t = t2;
+		t[!flipflop] = a[nxt];
+		a[nxt] = t[flipflop];
+		flipflop = !flipflop;
 		cur = nxt;
-	} while (cur != 1);
+	} while (cur != 0);
+
+	// Recurse on a[m,...n-1]
+	prime_outshuffle(a+m, n-m);
+
+	// Regroup odds and evens
+	std::rotate(a+m/2, a+m, a+m+(n-m)/2);
+}
+
+template<unsigned R, typename Data, typename Index>
+void prime_outshuffle_pf(Data *a, Index n) {
+	if (n <= 1) return;
+
+	// Compute appropriate value of m
+	int i = 0;
+	while (sprimes[i+1] <= n) i++;
+	Index m = sprimes[i];
+
+	Index cur = 0;
+	Index pf = cur;
+	for (unsigned i = 0; i < R; i++)
+		__builtin_prefetch(a+(pf = outshuffle_perm3(pf, m)), 1);
+	Data t[2];
+	int flipflop = 0;
+	t[flipflop] = a[cur];
+	do {
+		__builtin_prefetch(a+(pf = outshuffle_perm3(pf, m)), 1);
+		Index nxt = outshuffle_perm3(cur, m);
+		t[!flipflop] = a[nxt];
+		a[nxt] = t[flipflop];
+		flipflop = !flipflop;
+		cur = nxt;
+	} while (cur != 0);
 
 	// Recurse on a[m,...n-1]
 	prime_outshuffle(a+m, n-m);
@@ -262,10 +297,8 @@ void prime_outshuffle(Data *a, Index n) {
 }
 
 
-template<typename Data, typename Index>
-void shuffle16() {
 
-}
+
 
 // This version tries to use prefetching, but it doesn't help much. Memory
 // bandwidth is the bottleneck.
@@ -359,6 +392,45 @@ void prime_inshuffle_pf(Data *a, Index n) {
 	}
 }
 
+template<typename Data>
+void rev_outshuffle32(Data *a) {
+	const int cycles[6][5] = {
+		{1,16,8,4,2},
+		{3,17,24,12,6},
+		{5,18,9,20,10},
+		{7,19,25,28,14},
+		{11,21,26,13,22},
+		{15,23,27,29,30}
+	};
+	for (int i = 0; i < 6; i++) {
+		Data t1 = a[cycles[i][4]];
+		for (int j = 0; j < 5; j++) {
+			Data t2 = a[cycles[i][j]];
+			a[cycles[i][j]] = t1;
+			t1 = t2;
+		}
+	}
+}
+
+template<bool prefetch=false, typename Data, typename Index>
+void blocked_outshuffle(Data *a, Index n) {
+	Index r = n % 32;
+	Index m = n - r;
+
+	jain_outshuffle(a+m, r);
+
+	for(Index i = 0; i < m/32; i++) {
+		rev_outshuffle32(a+32*i);
+	}
+	struct block { Data dat[16];	};
+	if (prefetch) {
+		prime_outshuffle_pf<20>((block*)a, m/16);
+	} else {
+		prime_outshuffle((block*)a, m/16);
+	}
+	// Regroup odds and evens
+	std::rotate(a+m/2, a+m, a+m+r/2);
+}
 
 
 int main(int argc, char *argv[]) {
@@ -440,11 +512,11 @@ int main(int argc, char *argv[]) {
 	std::iota(a, a+n, 0);
 	std::cout << "done" << std::endl;
 
-	std::cout << "Permuting using jain_outshuffle()...";
+	std::cout << "Permuting using prime_outshuffle()...";
 	std::cout.flush();
 	print_array(a, n);
 	start = std::chrono::high_resolution_clock::now();
-	jain_outshuffle(a, n);
+	prime_outshuffle(a, n);
 	stop =  std::chrono::high_resolution_clock::now();
 	elapsed = stop - start;
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
@@ -456,11 +528,43 @@ int main(int argc, char *argv[]) {
 	std::iota(a, a+n, 0);
 	std::cout << "done" << std::endl;
 
-	std::cout << "Permuting using prime_outshuffle()...";
+	std::cout << "Permuting using blocked_outshuffle()...";
 	std::cout.flush();
 	print_array(a, n);
 	start = std::chrono::high_resolution_clock::now();
-	prime_outshuffle(a, n);
+	blocked_outshuffle(a, n);
+	stop =  std::chrono::high_resolution_clock::now();
+	elapsed = stop - start;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
+	print_array(a, n);
+	check_outshuffle_output(a, n);
+
+	std::cout << "Refilling...";
+	std::cout.flush();
+	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
+
+	std::cout << "Permuting using blocked_outshuffle_pf()...";
+	std::cout.flush();
+	print_array(a, n);
+	start = std::chrono::high_resolution_clock::now();
+	blocked_outshuffle<true>(a, n);
+	stop =  std::chrono::high_resolution_clock::now();
+	elapsed = stop - start;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
+	print_array(a, n);
+	check_outshuffle_output(a, n);
+
+	std::cout << "Refilling...";
+	std::cout.flush();
+	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
+
+	std::cout << "Permuting using jain_outshuffle()...";
+	std::cout.flush();
+	print_array(a, n);
+	start = std::chrono::high_resolution_clock::now();
+	jain_outshuffle(a, n);
 	stop =  std::chrono::high_resolution_clock::now();
 	elapsed = stop - start;
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
