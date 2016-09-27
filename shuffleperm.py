@@ -1,6 +1,19 @@
 from __future__ import print_function
 import sys
 
+
+def height(n):
+    """Return the height of an Eytzinger tree of size n"""
+    h = 0
+    m = 1
+    while (m < n):
+        h += 1
+        m += 2**h
+    return h
+
+def eytzinger(i, n):
+    """This is the Eytzinger permutation"""
+
 def my_outshuffle(i, n):
     """This is the outshuffle permutation we need for Eytzinger layouts"""
     if i % 2 == 0:
