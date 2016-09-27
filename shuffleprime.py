@@ -38,13 +38,14 @@ def shuffle_prime(n):
 
 if __name__ == "__main__":
     """List some shuffle-primes that form (roughly) a geometric progression."""
-    ub = 10
-    print ("std::uint64_t sprimes[] = {2,4", end="")
+    ub = 12
+    print ("std::uint64_t sprimes[] = {2U, 4U, 10U", end="")
     while ub < 2**64:
         j = ub
         while not shuffle_prime(j):
-            j -= 2
-        print(",{}".format(j), end="")
+            j += 2
+        print(", {}U".format(j), end="")
         sys.stdout.flush()
-        ub = 2*j
+        ub = 5*j//4
+        ub += ub % 2
     print("};")
