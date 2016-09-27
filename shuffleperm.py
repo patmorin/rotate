@@ -13,6 +13,13 @@ def height(n):
 
 def eytzinger(i, n):
     """This is the Eytzinger permutation"""
+    h = height(n)
+    bottom = n-2**(h-1)
+    if i % 2 == 0 and i//2 < bottom:
+        path = i | (1<<h)
+    else:
+        path = i | (1<<h-1)
+    print(path)
 
 def my_outshuffle(i, n):
     """This is the outshuffle permutation we need for Eytzinger layouts"""

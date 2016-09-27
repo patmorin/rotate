@@ -435,6 +435,24 @@ void blocked_outshuffle(Data *a, Index n) {
 	std::rotate(a+m/2, a+m, a+m+r/2);
 }
 
+template<bool prefetch=false, typename Data, typename Index>
+void blocked_eytzinger(Data *a, Index n) {
+	Index h = 0;
+	Index m = 0;
+	while (m + (1<<h) < n) {
+		m += 1<<h;
+		h++;
+	}
+	Index r = n - m;
+	blocked_outshuffle<prefetch>(a, 2*r);
+	std::rotate(a+r, a+2*r, a+n);
+	Index one = 1;
+	while (h > 0) {
+		blocked_outshuffle<prefetch>(a, (one<<h)-1);
+		h--;
+	}
+}
+
 
 int main(int argc, char *argv[]) {
 	std::uint64_t n;
@@ -573,5 +591,21 @@ int main(int argc, char *argv[]) {
 	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
 	print_array(a, n);
 	check_outshuffle_output(a, n);
+
+	std::cout << "Refilling...";
+	std::cout.flush();
+	std::iota(a, a+n, 0);
+	std::cout << "done" << std::endl;
+
+	std::cout << "Permuting using blocked_eytzinger()...";
+	std::cout.flush();
+	print_array(a, n);
+	start = std::chrono::high_resolution_clock::now();
+	blocked_eytzinger(a, n);
+	stop =  std::chrono::high_resolution_clock::now();
+	elapsed = stop - start;
+	std::cout << "done (" << elapsed.count() << "s)" << std::endl;
+	print_array(a, n);
+	// TODO: Check correctness of Eytzinger permutation
 
 }
